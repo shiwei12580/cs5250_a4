@@ -18,7 +18,7 @@ Revision 2:
     Thanks Lee Wei Ping for trying and pointing out the difficulty & ambiguity with future_prediction SRTF.
 '''
 import sys
-
+import copy 
 input_file = 'input.txt'
 
 class Process:
@@ -62,7 +62,7 @@ def RR_scheduling(process_list, time_quantum ):
     while(done<n): 
         for i in range(ap, n): 
             if current_time >= process_list[i].arrive_time:
-                queue.append(process_list[i])
+                queue.append(copy.deepcopy(process_list[i]))
                 ap+=1
                 rp+=1
         if rp<1: 
@@ -94,6 +94,46 @@ def RR_scheduling(process_list, time_quantum ):
     return schedule, average_waiting_time
 
 def SRTF_scheduling(process_list):
+    schedule = []
+    queue = [] 
+    waiting_time = 0
+    current_time = 0
+    ap = 0 #arrived process 
+    rp = 0 # ready process 
+    done = 0
+    n = len(process_list) 
+    current_proc_index = 0 # current process index
+    while(done<n): 
+        for i in range(ap, n): 
+            if current_time >= process_list[i].arrive_time:
+                queue.append(copy.deepcopy(process_list[i]))
+                ap+=1
+                rp+=1
+        if rp<1: 
+            #schedule.append((current_time, -1)) # no task, use -1 to represent idle
+            current_time+=1
+            continue
+        
+        #find the shortest process 
+        current_proc_index = 0
+        sp = queue[current_proc_index].burst_time;
+        for p in range(1, len(queue)): 
+            if (queue[p].burst_time < sp): 
+                current_proc_index = p
+                sp = queue[p].burst_time
+        
+        schedule.append((current_time,queue[current_proc_index].id))
+        waiting_time = waiting_time + (current_time - queue[current_proc_index].arrive_time)
+        current_time += queue[current_proc_index].burst_time
+        #process finished executing remove from the queue
+        queue.pop(current_proc_index)
+        done += 1
+        rp -= 1
+                
+        
+    average_waiting_time = waiting_time/float(n)
+    return schedule, average_waiting_time
+
     return (["to be completed, scheduling process_list on SRTF, using process.burst_time to calculate the remaining time of the current process "], 0.0)
 
 def SJF_scheduling(process_list, alpha):
