@@ -27,6 +27,8 @@ class Process:
         self.id = id
         self.arrive_time = arrive_time
         self.burst_time = burst_time
+        self.predict_time = 0 # predicted process time 
+        self.preempt_time = -1
     #for printing purpose
     def __repr__(self):
         return ('[id %d : arrive_time %d,  burst_time %d]'%(self.id, self.arrive_time, self.burst_time))
@@ -58,7 +60,7 @@ def RR_scheduling(process_list, time_quantum ):
     done = 0
     q  = time_quantum
     n = len(process_list) 
-    current_proc_index = 0 # current process index
+    current_proc_index = -1 # current process index
     while(done<n): 
         for i in range(ap, n): 
             if current_time >= process_list[i].arrive_time:
@@ -69,72 +71,49 @@ def RR_scheduling(process_list, time_quantum ):
             #schedule.append((current_time, -1)) # no task, use -1 to represent idle
             current_time+=1
             continue
-       
+            
+        while True: 
+            #print(queue)
+            #context switch to next unfinished task 
+            current_proc_index +=1 
+            if(current_proc_index >= len(queue)): 
+                current_proc_index = 0
+            
+            if queue[current_proc_index].burst_time == 0: continue
+            else: break
+                     
         
         if queue[current_proc_index].burst_time > q: 
             schedule.append((current_time, queue[current_proc_index].id))
-            waiting_time = waiting_time + (current_time - queue[current_proc_index].arrive_time)
+            if queue[current_proc_index].preempt_time == -1: #new process come, schedule for the first time 
+                waiting_time = waiting_time + (current_time - queue[current_proc_index].arrive_time)
+            else:   #process has been scheduled before but been preempt 
+                waiting_time = waiting_time + (current_time - queue[current_proc_index].preempt_time) 
             current_time+=q
+            #update preempt time to current time
+            queue[current_proc_index].preempt_time = current_time
             queue[current_proc_index].burst_time-=q
         else: 
             schedule.append((current_time, queue[current_proc_index].id))
-            waiting_time = waiting_time + (current_time - queue[current_proc_index].arrive_time)
+            if queue[current_proc_index].preempt_time == -1: #new process come, schedule for the first time 
+                waiting_time = waiting_time + (current_time - queue[current_proc_index].arrive_time)
+            else:   #process has been scheduled before but been preempt 
+                waiting_time = waiting_time + (current_time - queue[current_proc_index].preempt_time) 
             current_time += queue[current_proc_index].burst_time
+            #update preempt time to current time
+            queue[current_proc_index].preempt_time = current_time
             queue[current_proc_index].burst_time = 0
-            #process finished executing remove from the queue
-            queue.pop(current_proc_index)
             done += 1
             rp -= 1
-        # context switch switch to next process;
-        current_proc_index +=1 
-        if(current_proc_index >= len(queue)): 
-            current_proc_index = 0
+
+
  
     average_waiting_time = waiting_time/float(n)
     return schedule, average_waiting_time
 
 def SRTF_scheduling(process_list):
-    schedule = []
-    queue = [] 
-    waiting_time = 0
-    current_time = 0
-    ap = 0 #arrived process 
-    rp = 0 # ready process 
-    done = 0
-    n = len(process_list) 
-    current_proc_index = 0 # current process index
-    while(done<n): 
-        for i in range(ap, n): 
-            if current_time >= process_list[i].arrive_time:
-                queue.append(copy.deepcopy(process_list[i]))
-                ap+=1
-                rp+=1
-        if rp<1: 
-            #schedule.append((current_time, -1)) # no task, use -1 to represent idle
-            current_time+=1
-            continue
-        
-        #find the shortest process 
-        current_proc_index = 0
-        sp = queue[current_proc_index].burst_time;
-        for p in range(1, len(queue)): 
-            if (queue[p].burst_time < sp): 
-                current_proc_index = p
-                sp = queue[p].burst_time
-        
-        schedule.append((current_time,queue[current_proc_index].id))
-        waiting_time = waiting_time + (current_time - queue[current_proc_index].arrive_time)
-        current_time += queue[current_proc_index].burst_time
-        #process finished executing remove from the queue
-        queue.pop(current_proc_index)
-        done += 1
-        rp -= 1
-                
-        
-    average_waiting_time = waiting_time/float(n)
-    return schedule, average_waiting_time
+    return (["to be completed, scheduling SJF without using information from process.burst_time"],0.0)
 
-    return (["to be completed, scheduling process_list on SRTF, using process.burst_time to calculate the remaining time of the current process "], 0.0)
 
 def SJF_scheduling(process_list, alpha):
     return (["to be completed, scheduling SJF without using information from process.burst_time"],0.0)
@@ -166,7 +145,7 @@ def main(argv):
     FCFS_schedule, FCFS_avg_waiting_time =  FCFS_scheduling(process_list)
     write_output('FCFS.txt', FCFS_schedule, FCFS_avg_waiting_time )
     print ("simulating RR ----")
-    RR_schedule, RR_avg_waiting_time =  RR_scheduling(process_list,time_quantum = 2)
+    RR_schedule, RR_avg_waiting_time =  RR_scheduling(process_list,time_quantum = 4)
     write_output('RR.txt', RR_schedule, RR_avg_waiting_time )
     print ("simulating SRTF ----")
     SRTF_schedule, SRTF_avg_waiting_time =  SRTF_scheduling(process_list)
