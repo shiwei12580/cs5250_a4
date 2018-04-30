@@ -29,6 +29,7 @@ class Process:
         self.burst_time = burst_time
         self.predict_time = 0 # predicted process time 
         self.preempt_time = -1
+        self.task_finished = False
     #for printing purpose
     def __repr__(self):
         return ('[id %d : arrive_time %d,  burst_time %d]'%(self.id, self.arrive_time, self.burst_time))
@@ -190,10 +191,86 @@ def SRTF_scheduling(process_list):
     average_waiting_time = waiting_time/float(n)
     return schedule, average_waiting_time
 
+def cal_predict(procs, alpha): 
+    n = len(procs)
+    if n>0: 
+        i = 0; 
+        while i < n: 
+            if i==0: 
+                procs[0].predict_time = 5
+                if procs[0].task_finished: 
+                    i +=1
+                    continue
+                else: 
+                    break
+                
+            if not procs[i].task_finished: # current task not finished 
+                procs[i].predict_time = alpha*procs[i-1].burst_time + (1-alpha)*procs[i-1].predict_time
+                break
+            else: 
+                i += 1
+        if i>=n:  #no process available in this queue 
+            return -1, 0
+        else: 
+            return i, procs[i].predict_time
+    else:   # no process available in this  queue 
+        return -1, 0
+
+def findLeastProc(predictTime): 
+    leastQueue = -1
+    leastPredTime = 10000 # en choose a big number, assume no predict time is larger than this 
+    for i in range(0,4): 
+        if predictTime[i][0] != -1: # have proc in this queue
+            if predictTime[i][1] < leastPredTime:
+                leastPredTime = predictTime[i][1]
+                leastQueue = i
+    return leastQueue
+
 
 def SJF_scheduling(process_list, alpha):
-    return (["to be completed, scheduling SJF without using information from process.burst_time"],0.0)
-
+    schedule = []    
+    queue = [[],[],[],[]]    
+    waiting_time = 0
+    current_time = 0
+    ap = 0 #arrived process 
+    rp = 0 # ready process 
+    done = 0
+    n = len(process_list) 
+    while(done<n): 
+        for i in range(ap, n): 
+            if current_time >= process_list[i].arrive_time:
+                id = process_list[i].id
+                queue[id].append(copy.deepcopy(process_list[i]))
+                ap+=1
+                rp+=1
+        if rp<1: 
+            #schedule.append((current_time, -1)) # no task, use -1 to represent idle
+            current_time+=1
+            continue
+        
+        # find predict time
+        predictTime = [] 
+        for i in range(0,4):
+            procIndex, procProdictTime = cal_predict(queue[i],alpha)
+            predictTime.append((procIndex, procProdictTime))
+            
+        #print("predictTime: ", predictTime)        
+        # find the least predict time. 
+        queueIndex = findLeastProc(predictTime)
+        processIndex = predictTime[queueIndex][0] 
+        #print("queueIndex: ", queueIndex)
+        #print("processIndex: ", processIndex) 
+        
+        schedule.append((current_time, queue[queueIndex][processIndex].id))
+        queue[queueIndex][processIndex].task_finished = True
+        waiting_time = waiting_time+(current_time-queue[queueIndex][processIndex].arrive_time)
+        current_time += queue[queueIndex][processIndex].burst_time # run until process finish
+        
+        done += 1
+        rp -= 1
+        
+    average_waiting_time = waiting_time/float(n)
+    return schedule, average_waiting_time
 
 def read_input():
     result = []
@@ -221,7 +298,7 @@ def main(argv):
     FCFS_schedule, FCFS_avg_waiting_time =  FCFS_scheduling(process_list)
     write_output('FCFS.txt', FCFS_schedule, FCFS_avg_waiting_time )
     print ("simulating RR ----")
-    RR_schedule, RR_avg_waiting_time =  RR_scheduling(process_list,time_quantum = 4)
+    RR_schedule, RR_avg_waiting_time =  RR_scheduling(process_list,time_quantum = 2)
     write_output('RR.txt', RR_schedule, RR_avg_waiting_time )
     print ("simulating SRTF ----")
     SRTF_schedule, SRTF_avg_waiting_time =  SRTF_scheduling(process_list)
